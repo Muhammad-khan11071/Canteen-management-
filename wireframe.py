@@ -1,24 +1,46 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox,PhotoImage
+from PIL import Image, ImageTk
 from datamanager import add_entry_to_master_menu as amm,retrieve_master_menu as rmm
 
 # -------------------------
 # Helper function to create an item card
 # -------------------------
-def create_item_frame(parent, item_name="Item name", price="Price", available="0"):
+def create_item_frame(parent, item_name="Item name", price="Price", category="0"):
+    b=item_name
+    
     frame = ttk.Frame(parent, padding=10, relief="solid")
+    frame.columnconfigure(0, weight=0)  # image column - fixed
+    frame.columnconfigure(1, weight=0)  # spacer
+    frame.columnconfigure(2, weight=1)  # info column - expands
+    frame.columnconfigure(3, weight=0)  # delete button - fixed
 
     # Let the middle column expand
-    frame.columnconfigure(1, weight=1)
 
     # Image placeholder
-    img_frame = ttk.Label(frame, text="[Image]", relief="ridge", width=20, anchor="center")
-    img_frame.grid(row=0, column=0, rowspan=3, padx=5, pady=5)
+    try:
+        image = Image.open(rf"C:\Users\muhammad khan\OneDrive - Habib University\Desktop\Aps project\images\{b}.jpeg")
+        image = image.resize((150, 100))  
+        photo = ImageTk.PhotoImage(image)
+    except FileNotFoundError:
+        photo =None
+    
 
+    img_label = ttk.Label(frame, image=photo, relief="ridge", width=30)
+    if photo:
+        img_label.config(image=photo)
+        img_label.image = photo  # Prevent garbage collection
+    else:
+        img_label.config(text="[No Image Available]", anchor="center")
+    img_label.grid(row=0, column=0, rowspan=3, padx=5, pady=5)
+    
+ 
     # Item info
-    ttk.Label(frame, text=price).grid(row=0, column=1, sticky="w")
-    ttk.Label(frame, text=item_name).grid(row=1, column=1, sticky="w")
-    ttk.Label(frame, text=f"Category: {available}").grid(row=2, column=1, sticky="w")
+    ttk.Label(frame, text=price).grid(row=0, column=2, sticky="w")
+    ttk.Label(frame, text=item_name).grid(row=1, column=2, sticky="w")
+    ttk.Label(frame, text="").grid(row=1, column=1, sticky="w")
+    tk.Checkbutton(frame,text="Available").grid(row=2,column=2,sticky="w")
+    ttk.Label(frame, text=f"Category: {category}").grid(row=3, column=2, sticky="w")
 
     # ✅ Delete button (stick to east / right)
     delbt = tk.Button(
@@ -28,7 +50,8 @@ def create_item_frame(parent, item_name="Item name", price="Price", available="0
         bg="red",
         fg="white"
     )
-    delbt.grid(row=0, column=2, rowspan=3, padx=10, sticky="e")
+    delbt.grid(row=0, column=3, rowspan=3, padx=10, sticky="e")
+    frame.pack_propagate(False)
 
     return frame
 # -------------------------
@@ -63,14 +86,14 @@ def on_add_item_popup():
     price_entry.pack(pady=5)
 
     ttk.Label(popup, text="Category:").pack(pady=5)
-    avail_entry = ttk.Entry(popup)
-    avail_entry.pack(pady=5)
+    category_entry = ttk.Entry(popup)
+    category_entry.pack(pady=5)
 
     def add_item_to_main():
         """Add the new item to the main scrollable area."""
         name = name_entry.get().strip()
         price = price_entry.get().strip()
-        category = avail_entry.get().strip()
+        category = category_entry.get().strip()
         record={
             'item': name,
             'price': price,
