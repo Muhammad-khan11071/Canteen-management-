@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Today's Menu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ff6b6b;
+            --secondary: #4ecdc4;
+            --dark: #2d3436;
+            --light: #f7f1e3;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--light);
+            margin: 0;
+            padding: 20px;
+            color: var(--dark);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            color: var(--primary);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .date-badge {
+            background: var(--dark);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        /* Grid Layout */
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
+            max_width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Card Styling */
+        .card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-image {
+            height: 180px;
+            width: 100%;
+            background-color: #ddd;
+            object-fit: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+        }
+        
+        .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .card-content {
+            padding: 20px;
+        }
+
+        .category {
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            color: var(--secondary);
+            font-weight: 700;
+        }
+
+        .item-name {
+            font-size: 1.4rem;
+            margin: 5px 0;
+            font-weight: 600;
+        }
+
+        .price {
+            font-size: 1.2rem;
+            color: var(--dark);
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+
+        /* Upvote Button */
+        .upvote-btn {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 15px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .upvote-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .upvote-btn:active {
+            transform: scale(0.95);
+        }
+
+        .vote-count {
+            font-weight: bold;
+            color: var(--dark);
+        }
+
+        .no-menu {
+            text-align: center;
+            font-size: 1.5rem;
+            color: #888;
+            margin-top: 50px;
+        }
+        .upvote-btn.voted {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .upvote-btn.voted span::after {
+            content: "d"; /* Changes "Upvote" to "Upvoted" logic in JS mainly, but this is visual backup */
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Today's Menu</h1>
+        <span class="date-badge">{{ date }}</span>
+    </header>
+
+    {% if items %}
+    <div class="menu-grid">
+        {% for item in items %}
+        <div class="card">
+            <div class="card-image">
+    <img 
+        src="/static/images/{{ item.id }}.jpeg" 
+        onerror="this.onerror=null; this.src='/static/images/default.jpg';" 
+        alt="{{ item.item }}"
+    >
+</div>
+            <div class="card-content">
+                <div class="category">{{ item.category }}</div>
+                <div class="item-name">{{ item.item }}</div>
+                <div class="price">Rs. {{ item.price }}</div>
+                
+                <div class="card-footer">
+                    <button class="upvote-btn" onclick="upvoteItem({{ item.id }}, this)">
+                        <span>❤️ Upvote</span>
+                    </button>
+                    <span class="vote-count" id="count-{{ item.id }}">{{ item.upvotes }} votes</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+        <div class="no-menu">
+            <p>😴 No menu scheduled for this date.</p>
+        </div>
+    {% endif %}
+<script>
+        // 1. Run this when page loads to highlight buttons the user already clicked
+        document.addEventListener('DOMContentLoaded', () => {
+            const buttons = document.querySelectorAll('.upvote-btn');
+            buttons.forEach(btn => {
+                const itemId = btn.getAttribute('data-id');
+                // Check browser storage
+                if (localStorage.getItem(`voted_${itemId}`)) {
+                    markAsVoted(btn);
+                }
+            });
+        });
+
+        // Helper to change button style
+        function markAsVoted(btn) {
+            btn.classList.add('voted');
+            btn.querySelector('span').innerText = "❤️ Upvoted";
+        }
+
+        function unmarkAsVoted(btn) {
+            btn.classList.remove('voted');
+            btn.querySelector('span').innerText = "❤️ Upvote";
+        }
+
+        function upvoteItem(itemId, btnElement) {
+            // Check if currently voted
+            const isVoted = btnElement.classList.contains('voted');
+            
+            // Decide action: If already voted, we remove. If not, we add.
+            const action = isVoted ? 'remove' : 'add';
+
+            btnElement.disabled = true; // Prevent double clicks
+
+            fetch('/upvote', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: itemId, action: action }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the number
+                    const countSpan = document.getElementById(`count-${itemId}`);
+                    countSpan.innerText = `${data.new_count} votes`;
+                    
+                    // Toggle the button state and save to Local Storage
+                    if (action === 'add') {
+                        markAsVoted(btnElement);
+                        localStorage.setItem(`voted_${itemId}`, 'true');
+                    } else {
+                        unmarkAsVoted(btnElement);
+                        localStorage.removeItem(`voted_${itemId}`);
+                    }
+                } else {
+                    alert('Error updating vote');
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                btnElement.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>
