@@ -1,31 +1,29 @@
 """
 FAQ:
-1. somehow to create ```date``` (datetime.date object) to pass to ```retrieve_menu_by_date?```
-> A. ```date(<year>,<month>,<date>)```
+1. somehow to create date (datetime.date object) to pass to retrieve_menu_by_date?
+> A. date(<year>,<month>,<date>)
 
 2. how to utilize any function from this file?
-> A. in your file, type on top ```import func``` where func is the name of the function you need
+> A. in your file, type on top import func where func is the name of the function you need
 """
-
-# DONE: implement overwriting a date's entry in record.csv if date already exists
-# TODO: implement update_master_entry(item_id, updated_fields)
-# TODO: implement delete_master_entry(item_id)
 
 import csv
 import os
 from datetime import date
 
+# Get the folder where data_manager.py is located
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 MASTER_FIELDNAMES = ["id", "item", "price", "category", "upvotes"]
 RECORD_FIELDNAMES = ["date", "item_ids"]
-MASTER_FILE = "master_menu.csv"
-RECORD_FILE = "record.csv"
+
+# Create absolute paths
+MASTER_FILE = os.path.join(BASE_DIR, 'master_menu.csv')
+RECORD_FILE = os.path.join(BASE_DIR, 'record.csv')
 
 
 def generate_new_id() -> int:
-    """helper to generate next entry ID by looking at existing entries
-
-    * if master file doesn't exist, returns 1 (fresh start)
-    """
+    """helper to generate next entry ID by looking at existing entries"""
     if not os.path.exists(MASTER_FILE):
         return 1  # fresh start
 
@@ -37,27 +35,24 @@ def generate_new_id() -> int:
 
 
 def retrieve_master_menu() -> list[dict]:
-    """
-    return a list of dicts, with each dict representing a menu entry
-
-    * each dict has keys 'id', 'item', 'price', 'category' and 'upvotes'
-    """
+    """return a list of dicts, with each dict representing a menu entry"""
+    if not os.path.exists(MASTER_FILE):
+        return []
+        
     with open(MASTER_FILE, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-
         return list(reader)
 
 
-def retrieve_menu_by_date(for_date: date = date.today()) -> list[dict]:
-    """
-    * returns list of menu entries, with each entry represented by a dict
-    * returns an empty list if the date is invalid
-
-    Args:
-        for_date (datetime.date): default is date.today()
-    """
+def retrieve_menu_by_date(for_date: date = None) -> list[dict]:
+    """returns list of menu entries for a specific date"""
+    if for_date is None:
+        for_date = date.today()
 
     fmt_date = for_date.strftime(r"%d-%m-%y")
+
+    if not os.path.exists(RECORD_FILE):
+        return []
 
     with open(RECORD_FILE, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -71,66 +66,57 @@ def retrieve_menu_by_date(for_date: date = date.today()) -> list[dict]:
         if ids:
             ids = ids.split()
         else:
-            # empty list if no ids found for the date
             return []
 
     menu_list = []
+    
+    # Get master data to lookup items
+    master_data = retrieve_master_menu()
+    
+    for entry in master_data:
+        if entry["id"] in ids:
+            menu_list.append(entry)
 
-    with open(MASTER_FILE, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-
-        for entry in reader:
-            if entry["id"] in ids:
-                menu_list.append(entry)
-
-        return menu_list
+    return menu_list
 
 
 def retrieve_record() -> list[dict]:
-    """
-    return a list of dicts, with each dict representing a record entry
-
-    * each dict has keys 'date' and 'item_ids'
-    """
+    """return a list of dicts, with each dict representing a record entry"""
+    if not os.path.exists(RECORD_FILE):
+        return []
+        
     with open(RECORD_FILE, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-
         return list(reader)
 
 
 def write_to_file(filename:str, fieldnames:str, data: list[dict]) -> None:
     """
     writes given list of ids to the record CSV for the given date
-
-    Args:
-        filename (str): name of the file (most probably either RECORD_FILE or MASTER_FILE)
-        fieldnames (str): name of the fields (most probably either RECORD_FIELDNAMES or MASTER_FIELDNAMES)
-        data (list): ```list``` of ```dict```(s) containing entries to write to the file. Each dict should have
-        all the keys in ```fieldnames```
     """
-
-    # to avoid data loss, we first write the data to a temporary file and then
-    # replace the original one with it after a successful write
-
-    temp_filename = f"temp__{filename}"
+    # --- CRITICAL FIX FOR WINDOWS ---
+    # We must separate the folder path from the filename
+    directory = os.path.dirname(filename)
+    base_name = os.path.basename(filename)
+    
+    # Create the temp file in the SAME directory, but with a valid name
+    temp_filename = os.path.join(directory, f"temp__{base_name}")
 
     with open(temp_filename, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
-
         writer.writeheader()
         writer.writerows(data)
 
-    os.replace(temp_filename, filename)
-    print(f"Wrote to {filename} successfully!")
+    # Replace the original file with the new one
+    try:
+        os.replace(temp_filename, filename)
+        print(f"Wrote to {filename} successfully!")
+    except OSError as e:
+        print(f"Error renaming file: {e}")
 
 
 def add_entry_to_master_menu(entry_dict: dict) -> None:
-    """
-    adds a new entry to the master menu
-
-    Args:
-        entry_dict (dict): dict with keys 'item', 'price' and 'category'
-    """
+    """adds a new entry to the master menu"""
     data = retrieve_master_menu()
 
     entry_dict["id"] = generate_new_id()
@@ -143,37 +129,44 @@ def add_entry_to_master_menu(entry_dict: dict) -> None:
 
 def add_entry_to_record(entry_dict: dict) -> None:
     """
-    adds a new entry to the record
-
-    Args:
-        entry_dict (dict): dict with keys ```date``` and ```item_ids```
-        where ```date``` is a ```datetime.date``` instance and ```item_ids``` is
-        a string with space separated menu item IDs
+    Adds a new entry to the record. 
+    If the date exists, it APPENDS new items to the existing list.
     """
     data = retrieve_record()
 
-    entry_dict["date"] = entry_dict["date"].strftime(r"%d-%m-%y")
+    # Ensure date is string formatted (dd-mm-yy)
+    if isinstance(entry_dict["date"], date):
+        entry_dict["date"] = entry_dict["date"].strftime(r"%d-%m-%y")
     
-    over_written = False
+    found_date = False
+    
     for entry in data:
         if entry['date'] == entry_dict['date']:
-            print(f"overwriting {entry_dict['date']}")
-            entry['item_ids'] = entry_dict['item_ids']
-            over_written = True
+            print(f"Date found: {entry_dict['date']}. Appending new items...")
+            
+            # 1. Get existing IDs as a list
+            current_ids = entry['item_ids'].split()
+            
+            # 2. Get the new IDs passed in
+            new_ids = entry_dict['item_ids'].split()
+            
+            # 3. Append only the IDs that are NOT already in the list
+            for new_id in new_ids:
+                if new_id not in current_ids:
+                    current_ids.append(new_id)
+            
+            # 4. Save back as a space-separated string
+            entry['item_ids'] = " ".join(current_ids)
+            
+            found_date = True
             break
     
-    if not over_written:
+    # If date was not found, add it as a new entry
+    if not found_date:
         data.append(entry_dict)
 
     write_to_file(RECORD_FILE, RECORD_FIELDNAMES, data)
 
-
 if __name__ == "__main__":
-    # all testing of this file's code to be done here
-
-    for entry in retrieve_menu_by_date(date(2025, 11, 7)):
-        for key, value in entry.items():
-            print(f"{key} = {value}")
-        print()
-
-    
+    # Testing
+    pass

@@ -1,144 +1,174 @@
 import tkinter as tk
-from tkinter import ttk, messagebox,PhotoImage
+from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
-from data_manager import add_entry_to_master_menu as amm,retrieve_master_menu as rmm,add_entry_to_record,retrieve_record as retrive_today_record,retrieve_menu_by_date
 from datetime import date
-# from data_handling2 import filter_numerical as filter_price
-records=[]
-def add_ent(state,name,item_id):
-    # record={"date":date.today(),"
-    # item_ids":item_id}
-    # add_entry_to_record(record)
-    value=state.get()
-    if value==1:
-        if item_id not in records:
-            records.append(str(item_id))
-            print(records)
+import os
+# --- importing functions from data_managing files ---
+from data_manager import (
+    add_entry_to_master_menu, 
+    retrieve_master_menu, 
+    add_entry_to_record, 
+    retrieve_menu_by_date
+)
+from data_handling2 import filter_numerical,sort_numerical
+
+# --- GLOBAL VARIABLES ---
+current_dir = os.path.dirname(os.path.abspath(__file__)) #used to put relative paths
+records = [] #temporary list to store items for today's menu
+
+# -------------------------
+# function defs
+# -------------------------
+
+def add_ent(state, item_id):
+    """
+    handles checking and unchecking of items
+    """
+    value = state.get()
+    str_id = str(item_id)
+    
+    if value == 1:
+        if str_id not in records:
+            records.append(str_id)
     else:
-        if item_id in records:
-            records.remove(item_id)
-            print(records)
+        if str_id in records:
+            records.remove(str_id)
+    
+    print(f"sleected Ids: {records}")
+
+def del_ent(frame, name):
+    """
+    Deletes items from Main mneu 
+    """
+    if messagebox.askyesno("Delete Item", f"Are you sure you want to remove '{name}' from this view?"):
+        frame.destroy()
+        print(f"following item deleted {name}")
 
 
-        
+def create_item_frame(parent, record, show_checkbox=True):
+    """
+    this helper function creates item frames and returns them
+    """
+    item = record
+    frame = ttk.Frame(parent, padding=10, relief="solid", width=500)
+    
+    # defining columns and their weights
+    frame.columnconfigure(0, weight=0)  
+    frame.columnconfigure(1, weight=0)  
+    frame.columnconfigure(2, weight=1)  
 
 
+    # --- Image Handling ---
+    image_path = os.path.join(current_dir, "static", "images", f"{item['id']}.jpeg")
+    default_image_path = os.path.join(current_dir, "static", "images", "default.jpg")
     
-    
-    
-    # item_name = item_data['item']
-    # is_available = item_data['is_available'].get() # Get the new state (True/False)
-    
-    # # item_data['frame'] is the reference to the actual ttk.Frame widget
-    # parent_frame = item_data['frame'] 
-    
-    # print("-" * 40)
-    # print(f"Checkbox for '{item_name}' was CLICKED.")
-    # print(f"New state is: {is_available}")
-    # print(f"Reference to the parent Frame widget: {parent_frame}")
-    # print(f"Parent Frame ID: {parent_frame.winfo_id()}")
-    # print("-" * 40)
-    
-    # # You can now manipulate the parent frame, e.g., change its border:
-    # if is_available:
-    #     parent_frame.config(relief="groove")
-    # else:
-    #     parent_frame.config(relief="solid")
-# -------------------------
-# Helper function to create an item card
-# -------------------------
-def create_item_frame(parent,record):
-    item=record
-    frame = ttk.Frame(parent, padding=10, relief="solid",width=500)
-    frame.columnconfigure(0, weight=0)  # image column - fixed
-    frame.columnconfigure(1, weight=0)  # spacer
-    frame.columnconfigure(2, weight=1)  # info column - expands
-    frame.columnconfigure(3, weight=0)  # delete button - fixed
-
-    # Let the middle column expand
-
-    # Image placeholder
+    photo = None
     try:
-        image = Image.open(rf"C:\Users\muhammad khan\OneDrive - Habib University\HU resources\Aps project\images\{item["id"]}.jpeg")
-        image = image.resize((150, 100))  
-        photo = ImageTk.PhotoImage(image)
-    except FileNotFoundError:
-        image = Image.open(rf"C:\Users\muhammad khan\OneDrive - Habib University\Desktop\Aps project\images\default.jpg")
-        image = image.resize((150, 100))  
-        photo = ImageTk.PhotoImage(image)
-    
+        # Try specific ID image
+        if os.path.exists(image_path):
+            img_obj = Image.open(image_path)
+        # Try default image
+        elif os.path.exists(default_image_path):
+            img_obj = Image.open(default_image_path)
+        else:
+            img_obj = None
 
-    img_label = ttk.Label(frame, image=photo, relief="ridge", width=30)
+        if img_obj:
+            img_obj = img_obj.resize((150, 100))
+            photo = ImageTk.PhotoImage(img_obj)
+            
+    except Exception as e:
+        print(f"Error loading image: {e}")
+
+    # Image Label
+    img_label = ttk.Label(frame, relief="ridge", width=20)
     if photo:
         img_label.config(image=photo)
-        img_label.image = photo  # Prevent garbage collection
+        img_label.image = photo  
     else:
-        img_label.config(text="[No Image Available]", anchor="center")
-    img_label.grid(row=0, column=0, rowspan=3, padx=5, pady=5)
+        img_label.config(text="No Image", anchor="center")
+    img_label.grid(row=0, column=0, rowspan=4, padx=5, pady=5)
     
- 
-    # Item info
-    check_var=tk.IntVar()
-    ttk.Label(frame, text=item["price"]).grid(row=0, column=2, sticky="w")
-    ttk.Label(frame, text=item["item"]).grid(row=1, column=2, sticky="w")
-    ttk.Label(frame, text="").grid(row=1, column=1, sticky="w")
-    checkbox=tk.Checkbutton(frame,text="Available",variable=check_var,command=lambda state=check_var: add_ent(state,item["item"],item["id"])).grid(row=2,column=2,sticky="w")
-    ttk.Label(frame, text=f"Category: {item["category"]}").grid(row=3, column=2, sticky="w")
+    # setting item's values
+    ttk.Label(frame, text=f"Price: {item['price']}", font=("Arial", 10, "bold")).grid(row=0, column=2, sticky="w")
+    ttk.Label(frame, text=item["item"], font=("Arial", 12)).grid(row=1, column=2, sticky="w")
+    ttk.Label(frame, text=f"Category: {item['category']}").grid(row=2, column=2, sticky="w")
 
-    # ✅ Delete button (stick to east / right)
-    delbt = tk.Button(
-        frame,
-        text="X",
-        font=("Arial",10,"bold"),
-        command=lambda: del_ent(frame, item["item"]),
-        bg="red",
-        fg="white",
-        height=1, width=1,
-    )
-    delbt.grid(row=0, column=3, padx=10, sticky="e")
-    # add_bt = tk.Button(
-    #     frame,
-    #     text="+",
-    #     font=("Arial",15,"bold"),
-    #     command=lambda: add_ent(frame, item["item"],item["id"]),
-    #     bg="green",
-    #     fg="white",
-    #     height=1, width=1,
-    # )
-    # add_bt.grid(row=1, column=3, padx=10, sticky="e")
-    # frame.pack_propagate(False)
-    # lst.append(frame)
+    # --- it checks whether to add checkbox or not, as record cards cant have available checkbox  ---
+    if show_checkbox:
+        check_var = tk.IntVar()
+        if str(item['id']) in records:
+            check_var.set(1)
+        checkbox = tk.Checkbutton(
+            frame, 
+            text="Add to Today", 
+            variable=check_var,
+            command=lambda: add_ent(check_var, item["id"])
+        )
+        checkbox.grid(row=3, column=2, sticky="w")
+
+    # --- Delete Button ---
+    # Only show delete on main menu, not today's menu
+    if show_checkbox: 
+        delbt = tk.Button(
+            frame, text="X", font=("Arial", 10, "bold"),
+            command=lambda: del_ent(frame, item["item"]),
+            bg="red", fg="white"
+        )
+        delbt.grid(row=0, column=3, padx=10, sticky="e")
 
     return frame
-# -------------------------
-# Button callbacks
-# -------------------------
-def del_ent(frame,name):
-    if messagebox.askyesno("Delete Item", f"Are you sure you want to delete '{name}'?"):
-        frame.destroy()
-        print(f"Deleted: {name}")
-def on_search():
-    query = search_entry.get()
-    print(f"Searching for: {query}")
 
+# -------------------------
+# Button Commands
+# -------------------------
+
+def on_search():
+    """Filters the main menu locally by name"""
+    query = search_entry.get().lower().strip()
+    
+    # Clear current view
+    for widget in scrollable_frame.winfo_children():
+        widget.destroy()
+    # Get data
+    all_items = retrieve_master_menu()
+    found = False
+    for item in all_items:
+        # Search in Name OR Category
+        if query in item["item"].lower():
+            create_item_frame(scrollable_frame, item).pack(fill="x", pady=5)
+            found = True
+            
+    if not found:
+        ttk.Label(scrollable_frame, text="No items found.").pack(pady=10)
 
 def on_update():
-    record=""
-    for i in records:
-        record+=" "+str(i)
-        print(record)
-    today_date=date.today()
-    dict={"date":today_date,"item_ids":record}
-    add_entry_to_record(dict)
-    update_today()
+    """
+    Sends selected items to records.csv using helper function
+    """
+    if not records:
+        messagebox.showwarning("Warning", "No items selected to add!")
+        return
+    ids_string = " ".join(records)
+    #Create dict
+    today_entry = {
+        "date": date.today(),
+        "item_ids": ids_string
+    }
+    # appending to existing records
+    add_entry_to_record(today_entry)
+    update_today_view()
+    # Clear selection after adding
+    records.clear()
+    messagebox.showinfo("Success", "Items added to Today's menu! and menu updated successfully")
+    
 
 
 def on_add_item_popup():
-    """Open a popup to add a new item."""
+    """Popup interface to add new item to Master Menu."""
     popup = tk.Toplevel(root)
     popup.title("Add New Item")
     popup.geometry("300x250")
-    popup.resizable(False, False)
 
     ttk.Label(popup, text="Item Name:").pack(pady=5)
     name_entry = ttk.Entry(popup)
@@ -152,231 +182,221 @@ def on_add_item_popup():
     category_entry = ttk.Entry(popup)
     category_entry.pack(pady=5)
 
-
-    def add_item_to_main():
-        """Add the new item to the main scrollable area."""
+    def submit_item():
         name = name_entry.get().strip()
         price = price_entry.get().strip()
-        category = category_entry.get().strip()
-        record={
+        cat = category_entry.get().strip()
+
+        if not name or not price or not cat:
+            messagebox.showerror("Error", "All fields are required.")
+            return
+
+        # Prepare dict for helper function
+        new_record = {
             'item': name,
             'price': price,
-            'category': category
+            'category': cat
         }
-        amm(record)
-        if not name or not price or not category:
-            messagebox.showwarning("Missing Info", "Please fill all fields!")
-            return
-        # Create and pack new item in the main list
-        new_frame = create_item_frame(scrollable_frame, record)
-        new_frame.pack(fill="x", pady=5)
+        add_entry_to_master_menu(new_record)
+        # Refresh Main Menu to show new item
+        refresh_main_menu()
+        popup.destroy()
+        messagebox.showinfo("Success", f"{name} added to Master Menu.")
 
-        popup.destroy()  # close popup
+    ttk.Button(popup, text="Save Item", command=submit_item).pack(pady=10)
 
-    ttk.Button(popup, text="Add", command=add_item_to_main).pack(pady=10)
-def on_option_select(event=None):
-    selected = selected_option.get()
-
-    if selected == 'Price: "Enter price"':
-        price_entry_label.pack(pady=(5, 0), side="left")
-        price_entry.pack(pady=(5, 0), side="left")
-        apply_filter.pack(side="left", padx=5)
-
-    # elif selected == "Price low to high":
-    #     pass
-
-    # else:
-    #     price_entry_label.pack_forget()
-    #     price_entry.pack_forget()
-
-def retrive_from_main_menu():
-    rm=rmm()
-    for i in rm:
-        new_frame = create_item_frame(scrollable_frame, i)
-        new_frame.pack(fill="both",expand="True", pady=5,)
-def update_today():
-    for widget in right_scrollable_frame.winfo_children():
-        widget.destroy()
-    rm=retrieve_menu_by_date()
-    for i in rm:
-        print(i)
-        new_frame = create_item_frame(right_scrollable_frame, i)
-        new_frame.pack(fill="x", pady=5)
-def add_to_todays_menu():
-    rm=rmm()
-    for i in rm:
-        new_frame = create_item_frame(scrollable_frame, i)
-        new_frame.pack(fill="x", pady=5)
-def get_price():
-    if not price_entry.get():
+def get_price_filter():
+    """Uses filter_numerical from data_handling2.py"""
+    target_price = price_entry_hidden.get().strip()
+    if not target_price:
+        refresh_main_menu() # Reset if empty 
+        return
+    try:
+        filtered_list = filter_numerical('price', target_price)
+        
+        # Clear existing items
         for widget in scrollable_frame.winfo_children():
             widget.destroy()
-        rm=rmm()
-        for i in rm:
-            new_frame = create_item_frame(scrollable_frame, i)
-            new_frame.pack(fill="x", pady=5)
-        return
+            
+        if filtered_list:
+            for item in filtered_list:
+                create_item_frame(scrollable_frame, item).pack(fill="x", pady=5)
+        else:
+            ttk.Label(scrollable_frame, text=f"No items found for price {target_price}").pack(pady=10)
+            
+    except ValueError:
+        messagebox.showerror("Error", "Price must be a number")
 
-    item=rmm()
+def refresh_main_menu(custom_list=None):
+    """
+    Loads items into left scroll area. 
+    If custom_list is provided, it uses that. Otherwise, it fetches from master.
+    """
+    # Clear current widgets
     for widget in scrollable_frame.winfo_children():
         widget.destroy()
-    for i in item:
-        print(price_entry.get())
-        if int(i["price"])==int(price_entry.get()):
-            new_frame = create_item_frame(scrollable_frame, i)
+        
+    # Decide which data to use
+    if custom_list is not None:
+        items_to_show = custom_list
+    else:
+        items_to_show = retrieve_master_menu()
+
+    # Render items
+    if items_to_show:
+        for item in items_to_show:
+            create_item_frame(scrollable_frame, item).pack(fill="x", pady=5)
+    else:
+        ttk.Label(scrollable_frame, text="No items found.").pack(pady=10)
+def update_today_view():
+    """Loads today's items into right scroll area."""
+    for widget in right_scrollable_frame.winfo_children():
+        widget.destroy()
+        
+    # Get items for today using helpers
+    todays_items = retrieve_menu_by_date() # defaults to today's date
+    
+    if todays_items:
+        for item in todays_items:
+            # show_checkbox=False so we don't see checkboxes on the right side
+            create_item_frame(right_scrollable_frame, item, show_checkbox=False).pack(fill="x", pady=5)
+    else:
+        ttk.Label(right_scrollable_frame, text="Menu not set for today.").pack(pady=10)
+
+def on_option_select(event=None):
+    """Handles Dropdown changes for Filtering and Sorting."""
+    selected = selected_option.get()
+    
+    # --- UI Handling for "Enter Price" ---
+    if selected == 'Price: "Enter price"':
+        price_label.pack(side="left", padx=5)
+        price_entry_hidden.pack(side="left", padx=5)
+        apply_filter_btn.pack(side="left", padx=5)
+        # We don't refresh here, we wait for the user to click "Apply"
+    else:
+        # Hide price inputs if they were visible
+        price_label.pack_forget()
+        price_entry_hidden.pack_forget()
+        apply_filter_btn.pack_forget()
+        
+        # --- Sorting Logic ---
+        all_items = retrieve_master_menu()
+        
+        if selected == "Price: Low to High":
+            # Use the function from data_handling2
+            sorted_list = sort_numerical(all_items, 'price', 'ascending')
+            refresh_main_menu(sorted_list)
             
-            new_frame.pack(fill="x", pady=5)
+        elif selected == "Price: High to Low":
+            # Use the function from data_handling2
+            sorted_list = sort_numerical(all_items, 'price', 'descending')
+            refresh_main_menu(sorted_list)
+            
+        elif selected == "Show All":
+            refresh_main_menu() # Reloads default order
 
+# ... (Inside Main Window Setup) ...
 
-
+# Update the options list to include the new features
 
 
 # -------------------------
-# Main window setup
+# Main Window Setup
 # -------------------------
 root = tk.Tk()
-root.title("Inventory Management GUI")
+root.title("Canteen Inventory Manager")
 root.geometry("1100x700")
 
-# Outer container frame
-main_frame = ttk.Frame(root, padding=20, relief="solid")
+# -- Outer Container --
+main_frame = ttk.Frame(root, padding=20)
 main_frame.pack(fill="both", expand=True)
 
-# Search + control buttons section
+# -- Top Control Bar --
 search_frame = ttk.Frame(main_frame)
-search_frame.pack(fill="both", pady=5)
+search_frame.pack(fill="x", pady=5)
 
-search_entry = ttk.Entry(search_frame, width=50)
+# Search
+ttk.Label(search_frame, text="Search:").pack(side="left")
+search_entry = ttk.Entry(search_frame, width=30)
 search_entry.pack(side="left", padx=5)
+ttk.Button(search_frame, text="Go", command=on_search).pack(side="left", padx=5)
 
-search_button = ttk.Button(search_frame, text="Search", command=on_search)
-search_button.pack(side="left", padx=5)
+# Buttons
+ttk.Button(search_frame, text="Update Today's Menu", command=on_update).pack(side="left", padx=20)
+ttk.Button(search_frame, text="Add New Item", command=on_add_item_popup).pack(side="left", padx=5)
 
-update_button = ttk.Button(search_frame, text="Update", command=on_update)
-update_button.pack(side="left", padx=5)
+# -- Filter section --
+filter_frame = ttk.Frame(main_frame)
+filter_frame.pack(fill="x", pady=5)
 
-# ✅ This is the permanent "Add Item" button in the main window2
-add_button = ttk.Button(search_frame, text="Add Item", command=on_add_item_popup)
-add_button.pack(side="left", padx=5)
-from tkinter import ttk
-
-# --- define the function that handles dropdown selection ---
-
-# --- dropdown setup ---
 options = [
-    "Price high to low",
-    "Price low to high",
+    "Show All", 
+    "Price: Low to High", 
+    "Price: High to Low", 
     'Price: "Enter price"'
 ]
 
 selected_option = tk.StringVar(value=options[0])
-
-dropdown = ttk.Combobox(search_frame, textvariable=selected_option, values=options, state="readonly")
-dropdown.pack(pady=10,side="left")   # you can replace with .grid() or .place() if you’re using those
+dropdown = ttk.Combobox(filter_frame, textvariable=selected_option, values=options, state="readonly", width=20)
+dropdown.pack(side="left", padx=5)
 dropdown.bind("<<ComboboxSelected>>", on_option_select)
 
-# --- entry (hidden by default) ---
-price_entry_label = ttk.Label(search_frame, text="Enter custom price:")
-price_entry = ttk.Entry(search_frame)
-apply_filter = ttk.Button(search_frame, text="Applly", command=get_price)
+# prices filter
+price_label = ttk.Label(filter_frame, text="Price:")
+price_entry_hidden = ttk.Entry(filter_frame, width=10)
+apply_filter_btn = ttk.Button(filter_frame, text="Apply", command=get_price_filter)
 
+# -------------------------
+# Content Areas master_menu and todays_menu i.e left/right
+# -------------------------
+content_area = ttk.PanedWindow(main_frame, orient="horizontal")
+content_area.pack(fill="both", expand=True, pady=10)
 
+# --- LEFT: Master Menu ---
+left_container = ttk.Frame(content_area, relief="sunken")
+content_area.add(left_container, weight=3)
 
-# Scrollable items area
-items_frame_container = ttk.Frame(main_frame,width=500)
-items_frame_container.pack(fill="both", expand=True, pady=10,side="left")
+ttk.Label(left_container, text="Master Menu", font=("Arial", 14, "bold")).pack(pady=5)
 
-canvas = tk.Canvas(items_frame_container,width=500)
-scrollbar = ttk.Scrollbar(items_frame_container, orient="vertical", command=canvas.yview)
-scrollable_frame = ttk.Frame(canvas,width=500)
+canvas_l = tk.Canvas(left_container)
+scroll_l = ttk.Scrollbar(left_container, orient="vertical", command=canvas_l.yview)
+scrollable_frame = ttk.Frame(canvas_l)
 
-scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+scrollable_frame.bind("<Configure>", lambda e: canvas_l.configure(scrollregion=canvas_l.bbox("all")))
+canvas_l.create_window((0, 0), window=scrollable_frame, anchor="nw")
+canvas_l.configure(yscrollcommand=scroll_l.set)
 
-canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-canvas.configure(yscrollcommand=scrollbar.set)
+canvas_l.pack(side="left", fill="both", expand=True)
+scroll_l.pack(side="right", fill="y")
 
-canvas.pack(side="left", fill="y", expand=False)
-scrollbar.pack(side="left", fill="both")
-# --- ADD THIS NEW CODE FOR THE RIGHT MENU ---
-right_menu_container = ttk.Frame(main_frame, padding=10, relief="solid")
-right_menu_container.pack(fill="y", expand=False, side="left", padx=(10, 0))
+# --- right: today's menu ---
+right_container = ttk.Frame(content_area, relief="sunken")
+content_area.add(right_container, weight=2)
 
-# 2. Create the Canvas and Scrollbar INSIDE this container
-right_canvas = tk.Canvas(right_menu_container)
-right_scrollbar = ttk.Scrollbar(right_menu_container, orient="vertical", command=right_canvas.yview)
+ttk.Label(right_container, text="Today's Menu", font=("Arial", 14, "bold")).pack(pady=5)
 
-# 3. Create the frame that will hold the content
-right_scrollable_frame = ttk.Frame(right_canvas)
+canvas_r = tk.Canvas(right_container)
+scroll_r = ttk.Scrollbar(right_container, orient="vertical", command=canvas_r.yview)
+right_scrollable_frame = ttk.Frame(canvas_r)
 
-# 4. Wire them all together
-right_scrollable_frame.bind(
-    "<Configure>",
-    lambda e: right_canvas.configure(scrollregion=right_canvas.bbox("all"))
-)
+right_scrollable_frame.bind("<Configure>", lambda e: canvas_r.configure(scrollregion=canvas_r.bbox("all")))
+canvas_r.create_window((0, 0), window=right_scrollable_frame, anchor="nw")
+canvas_r.configure(yscrollcommand=scroll_r.set)
 
-right_canvas.create_window((0, 0), window=right_scrollable_frame, anchor="nw")
-right_canvas.configure(yscrollcommand=right_scrollbar.set)
+canvas_r.pack(side="left", fill="both", expand=True)
+scroll_r.pack(side="right", fill="y")
 
-# 5. Pack the canvas and scrollbar (note 'side="right"' for the scrollbar)
-right_canvas.pack(side="left", fill="y", expand=False)
-right_scrollbar.pack(side="right", fill="y",expand=False)
-
-# 6. Add placeholder content to the *new scrollable frame*
-ttk.Label(right_scrollable_frame, text="Todays menu ", font=("Arial", 16, "bold")).pack(pady=10)
-ttk.Label(right_scrollable_frame, text="There is nothing to show here right now.").pack(pady=5)
-
-# Add a bunch of labels to prove scrolling works
-
-
-# --- END OF NEW CODE ---
-
+# --- scroll using scrollwheel ---
 def _on_mousewheel(event):
-    # Find the widget under the cursor
-    x, y = event.x_root, event.y_root
-    widget = root.winfo_containing(x, y) # 'root' is your main window
+    canvas_l.yview_scroll(int(-1*(event.delta/120)), "units")
+    canvas_r.yview_scroll(int(-1*(event.delta/120)), "units")
+root.bind_all("<MouseWheel>", _on_mousewheel)
 
-    # Check if the widget is the left canvas or one of its children
-    # We do this by checking if the widget's string "path" starts with the canvas's path
-    if str(widget).startswith(str(canvas)):
-        canvas.yview_scroll(-1 * (event.delta // 120), "units")
-    
-    # Check if the widget is the right canvas or one of its children
-    elif str(widget).startswith(str(right_canvas)):
-        right_canvas.yview_scroll(-1 * (event.delta // 120), "units")
-
-def _on_mousewheel_linux(event):
-    # Find the widget under the cursor
-    x, y = event.x_root, event.y_root
-    widget = root.winfo_containing(x, y) 
-
-    target_canvas = None
-    
-    # Check if the widget is the left canvas or one of its children
-    if str(widget).startswith(str(canvas)):
-        target_canvas = canvas
-    # Check if the widget is the right canvas or one of its children
-    elif str(widget).startswith(str(right_canvas)):
-        target_canvas = right_canvas
-    
-    if target_canvas:
-        # Scroll the correct canvas (Linux)
-        if event.num == 4:
-            target_canvas.yview_scroll(-1, "units")
-        elif event.num == 5:
-            target_canvas.yview_scroll(1, "units")
-
-# Bind both types
-canvas.bind_all("<MouseWheel>", _on_mousewheel)        # Windows / Mac
-# canvas.bind_all("<Button-4>", _on_mousewheel_linux)    # Linux scroll up
-# canvas.bind_all("<Button-5>", _on_mousewheel_linux) 
-
-
-     # Windows / Mac
-# canvas.bind_all("<Button-4>", _on_mousewheel_linux)    # Linux scroll up
-# canvas.bind_all("<Button-5>", _on_mousewheel_linux) 
-
-# Add a few sample items
-retrive_from_main_menu()
-
+# -------------------------
+# Initialization
+# -------------------------
+# Load initial data
+refresh_main_menu()
+update_today_view()
 
 root.mainloop()
