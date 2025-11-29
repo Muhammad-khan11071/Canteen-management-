@@ -2,7 +2,7 @@ id,item,price,category,upvotes
 1,Biryani,280,Desi,2
 2,Daal Chawal,250,Desi,2
 3,Chicken Burger,250,Fast Food,0
-4,Pasta,300,Fast Food,0
+4,Pasta,300,Fast Food,1
 5,Sandwich,100,Fast Food,4
 6,Chai,100,Beverage,0
 7,Zinger Burger,300,Fast Food,0
@@ -49,3 +49,4 @@ id,item,price,category,upvotes
 48,Chicken Manchurian,320,Fast Food,1
 49,Egg Fried Rice,250,Fast Food,0
 50,Mint Margarita,180,Beverage,0
+51,nihari,550,desi,0

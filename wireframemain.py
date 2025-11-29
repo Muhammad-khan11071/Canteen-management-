@@ -199,7 +199,7 @@ def on_update():
     if not records:
         messagebox.showwarning("Warning", "No items selected to add!")
         return
-    # --- Step 1: Retrieve what is ALREADY in today's menu ---
+    # --- Step 1: Retrieve what is already in today's menu ---
     existing_items_objs = retrieve_menu_by_date() # Returns list of full item dictionaries
     current_ids = []
     if existing_items_objs:
@@ -324,7 +324,6 @@ def update_today_view():
 
     if todays_items:
         for item in todays_items:
-            # CHANGED: show_checkbox is now False
             create_item_frame(right_scrollable_frame, item, show_checkbox=False).pack(
                 fill="x", pady=5
             )
@@ -366,10 +365,6 @@ def on_option_select(event=None):
 
 
 # ... (Inside Main Window Setup) ...
-
-# Update the options list to include the new features
-
-
 # -------------------------
 # Main Window Setup
 # -------------------------
