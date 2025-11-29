@@ -115,7 +115,7 @@ def create_item_frame(parent, record, show_checkbox=True):
         row=2, column=2, sticky="w"
     )
 
-    # --- it checks whether to add checkbox or not, as record cards cant have available checkbox  ---
+    # --- Checkbox Logic ---
     if show_checkbox:
         check_var = tk.IntVar()
         if str(item["id"]) in records:
@@ -128,30 +128,30 @@ def create_item_frame(parent, record, show_checkbox=True):
         )
         checkbox.grid(row=3, column=2, sticky="w")
 
-    # --- Delete Button ---
-    # Only show delete on main menu, not today's menu
-    if show_checkbox:
-        if parent == right_scrollable_frame:
-
-            delbt = tk.Button(
-                frame,
-                text="—",
-                font=("Arial", 10, "bold"),
-                command=lambda: del_ent(frame, item["item"]),
-                bg="red",
-                fg="white",
-            )
-            delbt.grid(row=0, column=3, padx=10, sticky="e")
-        else:
-            delbt = tk.Button(
-                frame,
-                text="X",
-                font=("Arial", 10, "bold"),
-                command=lambda: del_item(item["id"], frame, item["item"]),
-                bg="red",
-                fg="white",
-            )
-            delbt.grid(row=0, column=3, padx=10, sticky="e")
+    # --- Delete/Remove Button Logic ---
+    # Moved OUTSIDE the show_checkbox block so buttons still appear on the right side
+    if parent == right_scrollable_frame:
+        # Button for Today's Menu (Removes from view)
+        delbt = tk.Button(
+            frame,
+            text="—",
+            font=("Arial", 10, "bold"),
+            command=lambda: del_ent(frame, item["item"]),
+            bg="orange", # Changed to orange to distinguish from permanent delete
+            fg="white",
+        )
+        delbt.grid(row=0, column=3, padx=10, sticky="e")
+    else:
+        # Button for Master Menu (Permanently deletes item)
+        delbt = tk.Button(
+            frame,
+            text="X",
+            font=("Arial", 10, "bold"),
+            command=lambda: del_item(item["id"], frame, item["item"]),
+            bg="red",
+            fg="white",
+        )
+        delbt.grid(row=0, column=3, padx=10, sticky="e")
 
     return frame
 
@@ -162,17 +162,28 @@ def create_item_frame(parent, record, show_checkbox=True):
 
 
 def on_search():
-    """Filters the main menu by name"""
+    """Filters the main menu by name and resets sort options"""
+    
+    # 1 Reset Dropdown to Default
+    selected_option.set("Show All")
+
+    # 2 Hide Price Filter 
+    price_label.pack_forget()
+    price_entry_hidden.pack_forget()
+    apply_filter_btn.pack_forget()
+
+    # 3. Existing Search Logic
     query = search_entry.get().lower().strip()
 
     # Clear current view
     for widget in scrollable_frame.winfo_children():
         widget.destroy()
+        
     # Get data
     all_items = retrieve_master_menu()
     found = False
     for item in all_items:
-        # Search in Name OR Category
+        # Search in Name 
         if query in item["item"].lower():
             create_item_frame(scrollable_frame, item).pack(fill="x", pady=5)
             found = True
@@ -183,21 +194,37 @@ def on_search():
 
 def on_update():
     """
-    Sends selected items to records.csv using helper function
+    Sends selected items to records.csv by merging new items with existing ones.
     """
     if not records:
         messagebox.showwarning("Warning", "No items selected to add!")
         return
-    ids_string = " ".join(records)
-    # Create dict
+    # --- Step 1: Retrieve what is ALREADY in today's menu ---
+    existing_items_objs = retrieve_menu_by_date() # Returns list of full item dictionaries
+    current_ids = []
+    if existing_items_objs:
+        # Extract just the ID strings from the existing objects
+        for item in existing_items_objs:
+            current_ids.append(str(item['id']))
+
+    # Step 2: Merge new 'records' into current_ids 
+    # We loop through new records and append them only if they aren't already there
+    for new_id in records:
+        if new_id not in current_ids:
+            current_ids.append(new_id)
+
+    # --- Step 3: Create the string and save ---
+    ids_string = " ".join(current_ids)
     today_entry = {"date": date.today(), "item_ids": ids_string}
-    # appending to existing records
+    
+    # This overwrites the CSV entry for today, but now we are passing 
+    # the COMBINED list of old + new items.
     add_entry_to_record(today_entry)
     update_today_view()
     # Clear selection after adding
     records.clear()
     messagebox.showinfo(
-        "Success", "Items added to Today's menu! and menu updated successfully"
+        "Success", "Items added to Today's menu successfully!"
     )
 
 
@@ -297,8 +324,8 @@ def update_today_view():
 
     if todays_items:
         for item in todays_items:
-            # show_checkbox=False so we don't see checkboxes on the right side
-            create_item_frame(right_scrollable_frame, item, show_checkbox=True).pack(
+            # CHANGED: show_checkbox is now False
+            create_item_frame(right_scrollable_frame, item, show_checkbox=False).pack(
                 fill="x", pady=5
             )
     else:
