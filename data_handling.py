@@ -1,6 +1,7 @@
 import csv
 from data_manager import retrieve_master_menu  # import your existing function
 
+
 def filter_numerical(column, value) -> list[dict]:
     """
     Filters rows from master menu based on a specific column and value,
@@ -28,26 +29,27 @@ def filter_numerical(column, value) -> list[dict]:
 
     # Filter items (case-insensitive and trims spaces)
     filtered_rows = [
-        item for item in master_menu
+        item
+        for item in master_menu
         if str(item[column]).strip().lower() == str(value).strip().lower()
     ]
 
     return filtered_rows
 
-# In data_handling2.py
 
-def sort_numerical(data_list, key, order='ascending'):
+def sort_numerical(data_list, key, order="ascending"):
     """
     Sorts a list of dictionaries based on a numerical key.
-    
+
     Args:
         data_list (list): List of dictionaries (e.g., the menu).
         key (str): The dictionary key to sort by (e.g., 'price').
         order (str): 'ascending' or 'descending'.
-        
+
     Returns:
         list: The sorted list.
     """
+
     def get_sort_key(item):
         try:
             # Convert to float for proper numerical sorting
@@ -55,7 +57,11 @@ def sort_numerical(data_list, key, order='ascending'):
         except ValueError:
             return 0
 
-    is_reverse = (order == 'descending')
-    
+    is_reverse = order == "descending"
+
     return sorted(data_list, key=get_sort_key, reverse=is_reverse)
+
+
 # Testing
+if __name__ == "__main__":
+    pass
