@@ -9,7 +9,7 @@ To get the project running, follow the instructions below.
 Prerequisites
 
 This project is primarily written in Python. Ensure you have Python 3.x installed on your system.
-install dependencies i.e: pandas, flask
+install dependencies i.e: pandas, flask, pillow
 Installation
 
 Clone the Repository

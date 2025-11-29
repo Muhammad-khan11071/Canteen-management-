@@ -11,6 +11,8 @@ from data_manager import (
     add_entry_to_record,
     retrieve_menu_by_date,
     delete_item,
+
+    remove_item_from_record,
 )
 from data_handling import filter_numerical, sort_numerical
 
@@ -40,10 +42,11 @@ def add_ent(state, item_id):
     print(f"sleected Ids: {records}")
 
 
-def del_ent(frame, name):
+def del_ent(frame, name,id):
     """
-    Deletes items from Main mneu
+    Deletes items from today's menu
     """
+    remove_item_from_record(id,date.today())
     if messagebox.askyesno(
         "Delete Item", f"Are you sure you want to remove '{name}' from this view?"
     ):
@@ -136,7 +139,7 @@ def create_item_frame(parent, record, show_checkbox=True):
             frame,
             text="—",
             font=("Arial", 10, "bold"),
-            command=lambda: del_ent(frame, item["item"]),
+            command=lambda: del_ent(frame,item["item"],item["id"]) ,
             bg="orange", # Changed to orange to distinguish from permanent delete
             fg="white",
         )

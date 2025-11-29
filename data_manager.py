@@ -208,6 +208,41 @@ def delete_item(id: int|str) -> None:
             break
     else:
         print(f"no item of ID: {id} found.")
+def remove_item_from_record(item_id: int|str, for_date: date = date.today()) -> None:
+    """
+    removes a specific item ID from the menu of a specific date
+
+    Args:
+        item_id: ID of the item to remove from the daily menu
+        for_date: date object (default is today)
+    """
+    data = retrieve_record()
+    fmt_date = for_date.strftime(r"%d-%m-%y")
+    str_id = str(item_id)
+    
+    updated = False
+
+    for entry in data:
+        if entry["date"] == fmt_date:
+            # Check if current entry has item_ids
+            if entry["item_ids"]:
+                ids = entry["item_ids"].split()
+                if str_id in ids:
+                    ids.remove(str_id)
+                    entry["item_ids"] = " ".join(ids)
+                    updated = True
+                    print(f"Removed item {str_id} from {fmt_date} menu.")
+                else:
+                    print(f"Item {str_id} not found in {fmt_date} menu.")
+            break
+    else:
+        print(f"No record found for date {fmt_date}")
+
+    if updated:
+        write_to_file(RECORD_FILE, RECORD_FIELDNAMES, data)
+
+
+
 
 
 if __name__ == "__main__":
